@@ -2,7 +2,9 @@ var User = require('./../models/user.model');
 
 module.exports = {
   createUser: async (userData) => {
-    const userObj = await User.findOne({ author_email: userData.author_email });
+    const userObj = await User.findOne({
+      author_email: userData.author_email
+    });
     if (userObj) {
       return userObj;
     }
