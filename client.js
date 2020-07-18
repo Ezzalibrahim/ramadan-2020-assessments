@@ -2,10 +2,12 @@
 
 const listOfVideoEle = document.getElementById('listOfRequests');
 
+const SUPER_USER_ID = '19980201';
 const state = {
   sortBy: 'newFirst',
   searchTerm: '',
-  userId: ''
+  userId: '',
+  isSuperUser: false
 }
 
 function getSingaleVideoReq(videoInfo, isprepend = false) {
@@ -178,6 +180,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     state.userId = new URLSearchParams(window.location.search).get('id');
 
+    if (state.userId === SUPER_USER_ID) {
+      state.isSuperUser = true;
+    }
     formLoginEle.classList.add('d-none');
     appContentEle.classList.remove('d-none');
 
