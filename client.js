@@ -14,7 +14,6 @@ function getSingaleVideoReq(videoInfo, isprepend = false) {
 
   var videoContainerEle = document.createElement('div');
   const statusVideo = videoInfo.status;
-  console.log(statusVideo);
   var vidReqTemplate = `
 <div class="card mb-3">
 ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
@@ -76,6 +75,7 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
 
   changeStyleVotes(videoInfo._id, videoInfo);
 
+  //! Admin submit changes (change status or add Video Link)
   function adminSubmitChange(id, status, resVideo = '') {
     fetch('http://localhost:7777/video-request', {
         method: 'PUT',
@@ -91,6 +91,8 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
       .then((data) => window.location.reload());
   }
 
+
+  //! Functions of Admin
   if (state.isSuperUser) {
 
     const adminChangeStatusElm = document.getElementById(`admin_change_status_${videoInfo._id}`);
@@ -101,20 +103,19 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
     const admin_video_res_container = document.getElementById(`admin_video_res_container_${videoInfo._id}`);
 
 
-    // Change status 
+    //! Change status 
     adminChangeStatusElm.addEventListener('change', (e) => {
       if (e.target.value === 'done') {
         admin_video_res_container.classList.remove('d-none');
       } else {
         admin_video_res_container.classList.add('d-none');
 
-        //TODO:add function to fetch
+        //Change the status of the video
         adminSubmitChange(videoInfo._id, e.target.value);
-
       }
     })
 
-    // Save the Video 
+    //! Save the Video 
     adminSaveVideoResElm.addEventListener('click', (e) => {
       e.preventDefault();
       if (!adminVideoRespElm.value) {
@@ -128,13 +129,34 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
 
     })
 
-  } // End idf is super user
+    //! Delete Video
+    adminDeleteVideoReqElm.addEventListener('click', (e) => {
+
+      const isSureToDelete = confirm(`Are You Sure To delete  ${videoInfo.topic_title}`);
+      if (!isSureToDelete) return;
+
+      fetch('http://localhost:7777/video-request', {
+          method: 'DELETE',
+          headers: {
+            'content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            id: videoInfo._id
+          })
+        }).then((rse) => rse.json())
+        .then((data) => window.location.reload());
+    })
+
+  } // End if is super user
 
   const countVotEle = document.getElementById(`scour_vote_${videoInfo._id}`);
   const voteElm = document.querySelectorAll(`[id^=votes_][id$=_${videoInfo._id}]`);
 
 
   voteElm.forEach(element => {
+    if (state.isSuperUser) {
+      return;
+    }
     element.addEventListener('click', function (e) {
       e.preventDefault();
 
@@ -165,6 +187,16 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
 }
 
 function changeStyleVotes(videoId, listVotes, vote_type) {
+  const videoVotUpsEle = document.getElementById(`votes_ups_${videoId}`);
+  const videoVotDownsEle = document.getElementById(`votes_downs_${videoId}`);
+
+  if (state.isSuperUser) {
+    videoVotUpsEle.style.opacity = '0.5';
+    videoVotDownsEle.style.opacity = '0.5';
+    videoVotUpsEle.style.cursor = 'not-allowed';
+    videoVotDownsEle.style.cursor = 'not-allowed';
+    return;
+  }
 
   if (!vote_type) {
     if (listVotes.votes.ups.includes(state.userId)) {
@@ -176,8 +208,6 @@ function changeStyleVotes(videoId, listVotes, vote_type) {
     }
   }
 
-  const videoVotUpsEle = document.getElementById(`votes_ups_${videoId}`);
-  const videoVotDownsEle = document.getElementById(`votes_downs_${videoId}`);
 
   const votesDirEle = vote_type === 'ups' ? videoVotUpsEle : videoVotDownsEle;
   const otherDirEle = vote_type === 'ups' ? videoVotDownsEle : videoVotUpsEle;
