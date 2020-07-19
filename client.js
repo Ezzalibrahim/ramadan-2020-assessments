@@ -15,6 +15,25 @@ function getSingaleVideoReq(videoInfo, isprepend = false) {
   var videoContainerEle = document.createElement('div');
   var vidReqTemplate = `
 <div class="card mb-3">
+${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
+          <select class="form-control mx-sm-3 " id="admin_change_status_${videoInfo._id}">
+            <option value="new">new</option>
+            <option value="planned">planned</option>
+            <option value="done">done</option>
+          </select>
+          <div class="input-group ml-2 mr-5 " id="admin_video_res_container_${videoInfo._id}">
+            <input type="text" class="form-control"
+              id="admin_video_res_${videoInfo._id}" 
+              placeholder="paste here youtube video id">
+            <div class="input-group-append">
+              <button class="btn btn-outline-secondary" 
+                id="admin_save_video_res_${videoInfo._id}"
+                type="button">Save</button>
+            </div>
+          </div>
+          <button id="admin_delete_video_req_${videoInfo._id}" class='btn btn-danger '>delete</button>
+        </div>` : ''
+      }
 <div class="card-body d-flex justify-content-between flex-row">
   <div class="d-flex flex-column">
     <h3>${videoInfo.topic_title}</h3>
@@ -52,8 +71,33 @@ function getSingaleVideoReq(videoInfo, isprepend = false) {
 
   changeStyleVotes(videoInfo._id, videoInfo);
 
-  const countVotEle = document.getElementById(`scour_vote_${videoInfo._id}`);
+  const adminChangeStatusElm = document.getElementById(`admin_change_status_${videoInfo._id}`);
+  const adminDeleteVideoReqElm = document.getElementById(`admin_delete_video_req_${videoInfo._id}`);
+  const adminVideoRespElm = document.getElementById(`admin_video_res_${videoInfo._id}`);
+  const adminSaveVideoResElm = document.getElementById(`admin_save_video_res_${videoInfo._id}`);
 
+  adminChangeStatusElm.addEventListener('change', (e) => {
+    console.log(e.target.id);
+    const [, , , id] = e.target.id.split('_');
+    console.log(id);
+
+    fetch('http://localhost:7777/video-request', {
+        method: 'PUT',
+        headers: {
+          'content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: videoInfo._id,
+          status: e.target.value,
+          resVideo: adminVideoRespElm.value
+        })
+      }).then((rse) => rse.json())
+      .then((data) => console.log(data))
+
+  })
+
+
+  const countVotEle = document.getElementById(`scour_vote_${videoInfo._id}`);
   const voteElm = document.querySelectorAll(`[id^=votes_][id$=_${videoInfo._id}]`);
 
 
@@ -182,6 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (state.userId === SUPER_USER_ID) {
       state.isSuperUser = true;
+      document.querySelector('.normal-user-content').classList.add('d-none');
     }
     formLoginEle.classList.add('d-none');
     appContentEle.classList.remove('d-none');
