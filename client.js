@@ -13,17 +13,21 @@ const state = {
 function getSingaleVideoReq(videoInfo, isprepend = false) {
 
   var videoContainerEle = document.createElement('div');
+  const statusVideo = videoInfo.status;
+  console.log(statusVideo);
   var vidReqTemplate = `
 <div class="card mb-3">
 ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
-          <select class="form-control mx-sm-3 " id="admin_change_status_${videoInfo._id}">
-            <option value="new">new</option>
-            <option value="planned">planned</option>
-            <option value="done">done</option>
+        <div class ="row mr-4">
+          <select   class="form-control col-xs-2 " id="admin_change_status_${videoInfo._id}">
+            <option ${statusVideo === 'new'? 'selected' :''}  value="new">new</option>
+            <option ${statusVideo === 'planned'? 'selected' :''}  value="planned">planned</option>
+            <option ${statusVideo === 'done'? 'selected' :''} value="done">done</option>
           </select>
-          <div class="input-group ml-2 mr-5 " id="admin_video_res_container_${videoInfo._id}">
+        </div>
+          <div class="input-group  mr-2 ${statusVideo === 'done'? '' :'d-none'} " id="admin_video_res_container_${videoInfo._id}">
             <input type="text" class="form-control"
-              id="admin_video_res_${videoInfo._id}" 
+              id="admin_video_res_${videoInfo._id}" value = "${videoInfo.video_ref.link}"
               placeholder="paste here youtube video id">
             <div class="input-group-append">
               <button class="btn btn-outline-secondary" 
@@ -34,36 +38,37 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
           <button id="admin_delete_video_req_${videoInfo._id}" class='btn btn-danger '>delete</button>
         </div>` : ''
       }
-<div class="card-body d-flex justify-content-between flex-row">
-  <div class="d-flex flex-column">
-    <h3>${videoInfo.topic_title}</h3>
-    <p class="text-muted mb-2">${videoInfo.topic_details}</p>
-    <p class="mb-0 text-muted">
-      ${
-        videoInfo.expected_result && 
-      `<strong>Expected results:</strong> ${videoInfo.expected_result}`
-    }
-          </p>
-  </div>
-  <div class="d-flex flex-column text-center">
-    <a id="votes_ups_${videoInfo._id}" class="btn btn-link">🔺</a>
-    <h3 id="scour_vote_${videoInfo._id}">${videoInfo.votes.ups.length - videoInfo.votes.downs.length }</h3>
-    <a  id="votes_downs_${videoInfo._id}" class="btn btn-link">🔻</a>
-  </div>
-</div>
-<div class="card-footer d-flex flex-row justify-content-between">
-  <div>
-    <span class="text-info">${videoInfo.status.toUpperCase()}</span>
-    &bullet; added by <strong>${videoInfo.author_name}</strong> on
-    <strong>${new Date(videoInfo.submit_date).toLocaleDateString()}</strong>
-  </div>
-  <div class="d-flex justify-content-center flex-column 408ml-auto mr-2">
-    <div class="badge badge-success">
-    ${videoInfo.target_level}
-    </div>
-  </div>
-</div>
-</div>
+        <div class="card-body d-flex justify-content-between flex-row">
+          <div class="d-flex flex-column">
+            <h3>${videoInfo.topic_title}</h3>
+            <p class="text-muted mb-2">${videoInfo.topic_details}</p>
+            <p class="mb-0 text-muted">
+              ${
+                videoInfo.expected_result && 
+              `<strong>Expected results:</strong> ${videoInfo.expected_result}`
+            }
+                  </p>
+          </div>
+          <div class="d-flex flex-column text-center">
+            <a id="votes_ups_${videoInfo._id}" class="btn btn-link">🔺</a>
+            <h3 id="scour_vote_${videoInfo._id}">${videoInfo.votes.ups.length - videoInfo.votes.downs.length }</h3>
+            <a  id="votes_downs_${videoInfo._id}" class="btn btn-link">🔻</a>
+          </div>
+        </div>
+        <div class="card-footer d-flex flex-row justify-content-between">
+          <div>
+            <span class="text-info">${videoInfo.status.toUpperCase()}</span>
+            &bullet; added by <strong>${videoInfo.author_name}</strong> on
+            <strong>${new Date(videoInfo.submit_date).toLocaleDateString()}</strong>
+          </div>
+          <div class="d-flex justify-content-center flex-column 408ml-auto mr-2">
+            <div class="badge badge-success">
+            ${videoInfo.target_level}
+            </div>
+          </div>
+        </div>
+        </div>
+
 `;
 
   videoContainerEle.innerHTML = vidReqTemplate;
@@ -71,31 +76,59 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
 
   changeStyleVotes(videoInfo._id, videoInfo);
 
-  const adminChangeStatusElm = document.getElementById(`admin_change_status_${videoInfo._id}`);
-  const adminDeleteVideoReqElm = document.getElementById(`admin_delete_video_req_${videoInfo._id}`);
-  const adminVideoRespElm = document.getElementById(`admin_video_res_${videoInfo._id}`);
-  const adminSaveVideoResElm = document.getElementById(`admin_save_video_res_${videoInfo._id}`);
-
-  adminChangeStatusElm.addEventListener('change', (e) => {
-    console.log(e.target.id);
-    const [, , , id] = e.target.id.split('_');
-    console.log(id);
-
+  function adminSubmitChange(id, status, resVideo = '') {
     fetch('http://localhost:7777/video-request', {
         method: 'PUT',
         headers: {
           'content-Type': 'application/json'
         },
         body: JSON.stringify({
-          id: videoInfo._id,
-          status: e.target.value,
-          resVideo: adminVideoRespElm.value
+          id,
+          status,
+          resVideo
         })
       }).then((rse) => rse.json())
-      .then((data) => console.log(data))
+      .then((data) => window.location.reload());
+  }
 
-  })
+  if (state.isSuperUser) {
 
+    const adminChangeStatusElm = document.getElementById(`admin_change_status_${videoInfo._id}`);
+    const adminDeleteVideoReqElm = document.getElementById(`admin_delete_video_req_${videoInfo._id}`);
+    const adminVideoRespElm = document.getElementById(`admin_video_res_${videoInfo._id}`);
+    const adminSaveVideoResElm = document.getElementById(`admin_save_video_res_${videoInfo._id}`);
+
+    const admin_video_res_container = document.getElementById(`admin_video_res_container_${videoInfo._id}`);
+
+
+    // Change status 
+    adminChangeStatusElm.addEventListener('change', (e) => {
+      if (e.target.value === 'done') {
+        admin_video_res_container.classList.remove('d-none');
+      } else {
+        admin_video_res_container.classList.add('d-none');
+
+        //TODO:add function to fetch
+        adminSubmitChange(videoInfo._id, e.target.value);
+
+      }
+    })
+
+    // Save the Video 
+    adminSaveVideoResElm.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!adminVideoRespElm.value) {
+        adminVideoRespElm.classList.add('is-invalid');
+        adminVideoRespElm.addEventListener('input', () => {
+          adminVideoRespElm.classList.remove('is-invalid');
+        })
+        return;
+      }
+      adminSubmitChange(videoInfo._id, 'done', adminVideoRespElm.value);
+
+    })
+
+  } // End idf is super user
 
   const countVotEle = document.getElementById(`scour_vote_${videoInfo._id}`);
   const voteElm = document.querySelectorAll(`[id^=votes_][id$=_${videoInfo._id}]`);
