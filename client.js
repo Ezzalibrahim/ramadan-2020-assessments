@@ -6,6 +6,7 @@ const SUPER_USER_ID = '19980201';
 const state = {
   sortBy: 'newFirst',
   searchTerm: '',
+  filterBy: 'all',
   userId: '',
   isSuperUser: false
 }
@@ -13,15 +14,15 @@ const state = {
 function getSingaleVideoReq(videoInfo, isprepend = false) {
 
   var videoContainerEle = document.createElement('div');
-  const statusVideo = videoInfo.status;
+
   var vidReqTemplate = `
 <div class="card mb-3">
 ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
         <div class ="row mr-4">
           <select   class="form-control col-xs-2 " id="admin_change_status_${videoInfo._id}">
-            <option ${statusVideo === 'new'? 'selected' :''}  value="new">new</option>
-            <option ${statusVideo === 'planned'? 'selected' :''}  value="planned">planned</option>
-            <option ${statusVideo === 'done'? 'selected' :''} value="done">done</option>
+            <option ${videoInfo.status === 'new'? 'selected' :''}  value="new">new</option>
+            <option ${videoInfo.status === 'planned'? 'selected' :''}  value="planned">planned</option>
+            <option ${videoInfo.status === 'done'? 'selected' :''} value="done">done</option>
           </select>
         </div>
           <div class="input-group  mr-2 ${statusVideo === 'done'? '' :'d-none'} " id="admin_video_res_container_${videoInfo._id}">
@@ -48,6 +49,14 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
             }
                   </p>
           </div>
+
+          ${videoInfo.status === 'done' ?`
+          <div class="ml-auto mr-3">
+            <iframe src="https://www.youtube.com/embed/${videoInfo.video_ref.link}" allowfullscreen frameborder="0">
+            </iframe>
+          </div>
+          `:``}
+
           <div class="d-flex flex-column text-center">
             <a id="votes_ups_${videoInfo._id}" class="btn btn-link">🔺</a>
             <h3 id="scour_vote_${videoInfo._id}">${videoInfo.votes.ups.length - videoInfo.votes.downs.length }</h3>
@@ -55,8 +64,13 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
           </div>
         </div>
         <div class="card-footer d-flex flex-row justify-content-between">
-          <div>
-            <span class="text-info">${videoInfo.status.toUpperCase()}</span>
+          <div class="${videoInfo.status === 'planned'? 'text-info' :''}
+                      ${videoInfo.status === 'done'? 'text-success' :''}">
+            <span >${videoInfo.status.toUpperCase()}
+            ${videoInfo.status === 'done'? `
+              On ${new Date(videoInfo.video_ref.date).toLocaleDateString()}
+            ` :''}
+            </span>
             &bullet; added by <strong>${videoInfo.author_name}</strong> on
             <strong>${new Date(videoInfo.submit_date).toLocaleDateString()}</strong>
           </div>
@@ -73,7 +87,7 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
   videoContainerEle.innerHTML = vidReqTemplate;
   isprepend ? listOfVideoEle.prepend(videoContainerEle) : listOfVideoEle.appendChild(videoContainerEle);
 
-  changeStyleVotes(videoInfo._id, videoInfo);
+  changeStyleVotes(videoInfo._id, videoInfo, videoInfo.state);
 
   //! Admin submit changes (change status or add Video Link)
   function adminSubmitChange(id, status, resVideo = '') {
@@ -154,7 +168,7 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
 
 
   voteElm.forEach(element => {
-    if (state.isSuperUser) {
+    if (state.isSuperUser || videoInfo.status === 'done') {
       return;
     }
     element.addEventListener('click', function (e) {
@@ -177,7 +191,7 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
 
           countVotEle.innerText = data.votes.ups.length - data.votes.downs.length;
 
-          changeStyleVotes(id, data, vote_type);
+          changeStyleVotes(id, data, videoInfo.status, vote_type);
 
         });
     });
@@ -186,11 +200,11 @@ ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
 
 }
 
-function changeStyleVotes(videoId, listVotes, vote_type) {
+function changeStyleVotes(videoId, listVotes, videoStatus, vote_type) {
   const videoVotUpsEle = document.getElementById(`votes_ups_${videoId}`);
   const videoVotDownsEle = document.getElementById(`votes_downs_${videoId}`);
 
-  if (state.isSuperUser) {
+  if (state.isSuperUser || videoStatus === 'done') {
     videoVotUpsEle.style.opacity = '0.5';
     videoVotDownsEle.style.opacity = '0.5';
     videoVotUpsEle.style.cursor = 'not-allowed';
@@ -221,9 +235,9 @@ function changeStyleVotes(videoId, listVotes, vote_type) {
   }
 }
 
-function loadAllVidReqs(sortBy = 'newFirst', searchTerm = '') {
+function loadAllVidReqs(sortBy = 'newFirst', searchTerm = '', filterBy = 'all') {
 
-  fetch(`http://localhost:7777/video-request?sortBy=${sortBy}&searchTerm=${searchTerm}`)
+  fetch(`http://localhost:7777/video-request?sortBy=${sortBy}&searchTerm=${searchTerm}&filterBy=${filterBy}`)
     .then(blod => blod.json())
     .then(data => {
       //we give an empty value to the container of video Topic and after we load all video again and sort theme
@@ -275,9 +289,12 @@ function checkValidity(formData) {
   return true;
 }
 
+
+
 document.addEventListener('DOMContentLoaded', function () {
   const formVidReqEle = document.getElementById('formVideoRequest');
   const sortByElmes = document.querySelectorAll('[id*=sort_by_]');
+  const filterByElmes = document.querySelectorAll('[id*=filter_by_]');
   const searchEle = document.getElementById('search_box');
 
   const formLoginEle = document.querySelector('.form-login');
@@ -306,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function () {
       e.preventDefault();
 
       state.sortBy = this.querySelector('input').value;
-      loadAllVidReqs(state.sortBy, state.searchTerm);
+      loadAllVidReqs(state.sortBy, state.searchTerm, state.filterBy);
 
       if (state.sortBy === 'topVotedFirst') {
         document.getElementById('sort_by_new').classList.remove('active');
@@ -319,11 +336,21 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  // Filter 
+  filterByElmes.forEach(element => {
+    element.addEventListener('click', function (e) {
+      e.preventDefault();
+      state.filterBy = this.querySelector('input').value;
+      filterByElmes.forEach(ele => ele.classList.remove('active'));
+      loadAllVidReqs(state.sortBy, state.searchTerm, state.filterBy);
+      this.classList.add('active');
+    })
+  });
   // Search 
   searchEle.addEventListener('input', debounce((e) => {
 
     state.searchTerm = e.target.value;
-    loadAllVidReqs(state.sortBy, state.searchTerm);
+    loadAllVidReqs(state.sortBy, state.searchTerm, state.filterBy);
 
   }, 600));
 

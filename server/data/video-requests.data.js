@@ -1,5 +1,8 @@
 const VideoRequest = require('./../models/video-requests.model');
 const User = require('./../models/user.model');
+const {
+  filter
+} = require('bluebird');
 
 module.exports = {
   createRequest: async (vidRequestData) => {
@@ -19,18 +22,25 @@ module.exports = {
     return newRequest.save();
   },
 
-  getAllVideoRequests: (top) => {
-    return VideoRequest.find({}).sort({
+  getAllVideoRequests: (filterBy) => {
+    const filter = filterBy === 'all' ? {} : {
+      status: filterBy
+    };
+    return VideoRequest.find(filter).sort({
       submit_date: '-1'
-    }).limit(top);
+    })
   },
 
-  searchRequests: (topic) => {
+  searchRequests: (topic, filterBy) => {
+    const filter = filterBy === 'all' ? {} : {
+      status: filterBy
+    };
     return VideoRequest.find({
         topic_title: {
           $regex: topic,
           $options: 'i'
-        }
+        },
+        ...filter
       })
       .sort({
         addedAt: '-1'
