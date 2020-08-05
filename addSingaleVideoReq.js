@@ -3,74 +3,99 @@ import {
 } from './changeVoteStyle.js';
 import dataService from './dataService.js';
 
+import {
+  state
+} from "./client.js";
+
 
 const listOfVideoEle = document.getElementById('listOfRequests');
 
 export function addSingaleVideoReq(videoInfo, state, isprepend = false) {
   var videoContainerEle = document.createElement('div');
+  // change the format of date 
+  function formatdate(date) {
+    return new Date(date).toLocaleDateString();
+  }
+  // we de destraction to avoid repet videoInfo a lot of time !!
+  const {
+    _id: id,
+    status,
+    topic_title: title,
+    topic_details: details,
+    expected_result: expected,
+    video_ref: videoRef,
+    votes,
+    author_name: author,
+    submit_date: submitDate,
+    target_level: level
+  } = videoInfo;
 
-  var vidReqTemplate = `
-  <div class="card mb-3">
-  ${ state.isSuperUser? `<div class="card-header d-flex justify-content-between">
-          <div class ="row mr-4">
-            <select   class="form-control col-xs-2 " id="admin_change_status_${videoInfo._id}">
-              <option ${videoInfo.status === 'new'? 'selected' :''}  value="new">new</option>
-              <option ${videoInfo.status === 'planned'? 'selected' :''}  value="planned">planned</option>
-              <option ${videoInfo.status === 'done'? 'selected' :''} value="done">done</option>
-            </select>
-          </div>
-            <div class="input-group  mr-2 ${videoInfo.status === 'done'? '' :'d-none'} " id="admin_video_res_container_${videoInfo._id}">
-              <input type="text" class="form-control"
-                id="admin_video_res_${videoInfo._id}" value = "${videoInfo.video_ref.link}"
-                placeholder="paste here youtube video id">
-              <div class="input-group-append">
-                <button class="btn btn-outline-secondary" 
-                  id="admin_save_video_res_${videoInfo._id}"
-                  type="button">Save</button>
+  // add Calss bootstrap to video template
+  const className = status === 'done' ? 'text-success' : status === 'planned' ? 'text-primary' : 'text-muted'
+
+  // Vote Score 
+  const votesScore = votes.ups.length - votes.downs.length;
+
+  // add a special DOM to VideoTemplate if the user is an admin
+  function getAdminDOM(id, status) {
+    return `<div class="card-header d-flex justify-content-between">
+              <div class ="row mr-4">
+                <select   class="form-control col-xs-2 " id="admin_change_status_${id}">
+                  <option ${status === 'new'? 'selected' :''}  value="new">new</option>
+                  <option ${status === 'planned'? 'selected' :''}  value="planned">planned</option>
+                  <option ${status === 'done'? 'selected' :''} value="done">done</option>
+                </select>
               </div>
-            </div>
-            <button id="admin_delete_video_req_${videoInfo._id}" class='btn btn-danger '>delete</button>
-          </div>` : ''
-        }
-          <div class="card-body d-flex justify-content-between flex-row">
-            <div class="d-flex flex-column">
-              <h3>${videoInfo.topic_title}</h3>
-              <p class="text-muted mb-2">${videoInfo.topic_details}</p>
-              <p class="mb-0 text-muted">
-                ${
-                  videoInfo.expected_result && 
-                `<strong>Expected results:</strong> ${videoInfo.expected_result}`
-              }
-                    </p>
-            </div>
-  
-            ${videoInfo.status === 'done' ?`
+                <div class="input-group  mr-2 ${status === 'done'? '' :'d-none'} " id="admin_video_res_container_${id}">
+                  <input type="text" class="form-control"
+                    id="admin_video_res_${id}" value = "${videoRef.link}"
+                    placeholder="paste here youtube video id">
+                  <div class="input-group-append">
+                    <button class="btn btn-outline-secondary" 
+                      id="admin_save_video_res_${id}"
+                      type="button">Save</button>
+                  </div>
+                </div>
+                <button id="admin_delete_video_req_${id}" class='btn btn-danger '>delete</button>
+            </div>`
+  }
+
+  // if the video is done add the video dom to the video template
+  function addVideoRef(link) {
+    return `
             <div class="ml-auto mr-3">
-              <iframe src="https://www.youtube.com/embed/${videoInfo.video_ref.link}" allowfullscreen frameborder="0">
+              <iframe src="https://www.youtube.com/embed/${link}" allowfullscreen frameborder="0">
               </iframe>
             </div>
-            `:``}
-  
+          `
+  }
+  var vidReqTemplate = `
+  <div class="card mb-3"> ${ state.isSuperUser? getAdminDOM(id , status) : '' }
+          <div class="card-body d-flex justify-content-between flex-row">
+            <div class="d-flex flex-column">
+              <h3>${title}</h3>
+              <p class="text-muted mb-2"> ${details}</p>
+              <p class="mb-0 text-muted"> ${ expected && `<strong>Expected results:</strong> ${expected}` } </p>
+            </div>
+            ${status === 'done' ? addVideoRef(videoRef.link) : ``}
+
             <div class="d-flex flex-column text-center">
-              <a id="votes_ups_${videoInfo._id}" class="btn btn-link">🔺</a>
-              <h3 id="scour_vote_${videoInfo._id}">${videoInfo.votes.ups.length - videoInfo.votes.downs.length }</h3>
-              <a  id="votes_downs_${videoInfo._id}" class="btn btn-link">🔻</a>
+              <a id="votes_ups_${id}" class="btn btn-link">🔺</a>
+              <h3 id="scour_vote_${id}">${votesScore}</h3>
+              <a  id="votes_downs_${id}" class="btn btn-link">🔻</a>
             </div>
           </div>
           <div class="card-footer d-flex flex-row justify-content-between">
-            <div class="${videoInfo.status === 'planned'? 'text-info' :''}
-                        ${videoInfo.status === 'done'? 'text-success' :''}">
-              <span >${videoInfo.status.toUpperCase()}
-              ${videoInfo.status === 'done'? `
-                On ${new Date(videoInfo.video_ref.date).toLocaleDateString()}
-              ` :''}
+            <div class="${className}">
+              <span >${status.toUpperCase()}
+              ${status === 'done'? `  On ${formatdate(videoRef.date)} ` :''}
               </span>
-              &bullet; added by <strong>${videoInfo.author_name}</strong> on
-              <strong>${new Date(videoInfo.submit_date).toLocaleDateString()}</strong>
+              &bullet; added by <strong>${author}</strong> on
+              <strong>${formatdate(submitDate)}</strong>
             </div>
             <div class="d-flex justify-content-center flex-column 408ml-auto mr-2">
               <div class="badge badge-success">
-              ${videoInfo.target_level}
+              ${level}
               </div>
             </div>
           </div>
@@ -78,21 +103,17 @@ export function addSingaleVideoReq(videoInfo, state, isprepend = false) {
   
   `;
 
-  videoContainerEle.innerHTML = vidReqTemplate;
-  isprepend ? listOfVideoEle.prepend(videoContainerEle) : listOfVideoEle.appendChild(videoContainerEle);
 
-  changeVoteStyle(videoInfo._id, videoInfo, videoInfo.state, state);
+  //! Functions of Admin 
+  // bind all admin action( functions )
+  function bindAdminAction(id, title) {
 
+    const adminChangeStatusElm = document.getElementById(`admin_change_status_${id}`);
+    const adminDeleteVideoReqElm = document.getElementById(`admin_delete_video_req_${id}`);
+    const adminVideoRespElm = document.getElementById(`admin_video_res_${id}`);
+    const adminSaveVideoResElm = document.getElementById(`admin_save_video_res_${id}`);
 
-  //! Functions of Admin
-  if (state.isSuperUser) {
-
-    const adminChangeStatusElm = document.getElementById(`admin_change_status_${videoInfo._id}`);
-    const adminDeleteVideoReqElm = document.getElementById(`admin_delete_video_req_${videoInfo._id}`);
-    const adminVideoRespElm = document.getElementById(`admin_video_res_${videoInfo._id}`);
-    const adminSaveVideoResElm = document.getElementById(`admin_save_video_res_${videoInfo._id}`);
-
-    const admin_video_res_container = document.getElementById(`admin_video_res_container_${videoInfo._id}`);
+    const admin_video_res_container = document.getElementById(`admin_video_res_container_${id}`);
 
 
     //! Change status 
@@ -103,7 +124,7 @@ export function addSingaleVideoReq(videoInfo, state, isprepend = false) {
         admin_video_res_container.classList.add('d-none');
 
         //Change the status of the video
-        dataService.updateVideoStatus(videoInfo._id, e.target.value);
+        dataService.updateVideoStatus(id, e.target.value);
       }
     })
 
@@ -117,63 +138,57 @@ export function addSingaleVideoReq(videoInfo, state, isprepend = false) {
         })
         return;
       }
-      dataService.updateVideoStatus(videoInfo._id, 'done', adminVideoRespElm.value);
+      dataService.updateVideoStatus(id, 'done', adminVideoRespElm.value);
 
     })
 
     //! Delete Video
     adminDeleteVideoReqElm.addEventListener('click', (e) => {
 
-      const isSureToDelete = confirm(`Are You Sure To delete  ${videoInfo.topic_title}`);
+      const isSureToDelete = confirm(`Are You Sure To delete  ${title}`);
       if (!isSureToDelete) return;
 
-      fetch('http://localhost:7777/video-request', {
-          method: 'DELETE',
-          headers: {
-            'content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            id: videoInfo._id
-          })
-        }).then((rse) => rse.json())
-        .then((data) => window.location.reload());
+
+      dataService.deletevideoReq(id).then((_) => window.location.reload());
     })
+  }
 
-  } // End if is super user
+  // bind vote action
+  function bindVotesAction(id, status, state) {
 
-  const countVotEle = document.getElementById(`scour_vote_${videoInfo._id}`);
-  const voteElm = document.querySelectorAll(`[id^=votes_][id$=_${videoInfo._id}]`);
+    const voteElm = document.querySelectorAll(`[id^=votes_][id$=_${id}]`);
 
+    voteElm.forEach(element => {
+      if (state.isSuperUser || status === 'done') {
+        return;
+      }
+      element.addEventListener('click', function (e) {
+        e.preventDefault();
 
-  voteElm.forEach(element => {
-    if (state.isSuperUser || videoInfo.status === 'done') {
-      return;
-    }
-    element.addEventListener('click', function (e) {
-      e.preventDefault();
+        const [, vote_type, id] = e.target.getAttribute('id').split('_');
 
-      const [, vote_type, id] = e.target.getAttribute('id').split('_');
-
-      fetch('http://localhost:7777/video-request/vote', {
-          method: 'PUT',
-          headers: {
-            'content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            id,
-            vote_type,
-            user_id: state.userId
-          })
-        }).then(bold => bold.json())
-        .then(data => {
+        dataService.updateVote(id, vote_type, state.userId).then(data => {
 
           countVotEle.innerText = data.votes.ups.length - data.votes.downs.length;
 
-          changeVoteStyle(id, data, videoInfo.status, state, vote_type);
+          changeVoteStyle(id, data.votes, status, state, vote_type);
 
         });
+      });
     });
-  });
+  }
 
+  videoContainerEle.innerHTML = vidReqTemplate;
+  isprepend ? listOfVideoEle.prepend(videoContainerEle) : listOfVideoEle.appendChild(videoContainerEle);
 
+  // add fuontonalty if the user is super user 
+  if (state.isSuperUser) {
+    bindAdminAction(id, title);
+  }
+
+  changeVoteStyle(id, votes, status, state);
+
+  const countVotEle = document.getElementById(`scour_vote_${id}`);
+
+  bindVotesAction(id, status, state);
 }
